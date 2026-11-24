@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lector rápido</title>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Lexend:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef2f4;--card:#fff;--ink:#18222b;--mut:#55636f;--acc:#0b7a75;--acc-ink:#fff;--line:#cdd6dc;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12181d;--card:#1b242b;--ink:#e9eef1;--mut:#9fb0bb;--acc:#3fc1b8;--acc-ink:#06201e;--line:#33414b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12181d;--card:#1b242b;--ink:#e9eef1;--mut:#9fb0bb;--acc:#3fc1b8;--acc-ink:#06201e;--line:#33414b;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 "Atkinson Hyperlegible",Verdana,sans-serif}
+main{max-width:1200px;margin:0 auto;padding:16px;display:grid;gap:16px}
+h1{font-size:1.5rem;margin:0 0 2px}
+.sub{margin:0;color:var(--mut)}
+#reader{background:var(--card);border:2px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden}
+#reader:fullscreen{border:0;border-radius:0;width:100%;height:100%}
+#stage{flex:1;min-height:max(240px,42vh);display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;overflow:auto;transition:none}
+#word{line-height:1.25;overflow-wrap:anywhere}
+#bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;padding:12px 16px;border-top:2px solid var(--line);background:var(--card)}
+.grp{display:flex;align-items:center;gap:8px}
+button,select,input,textarea{font:inherit;color:inherit}
+button,select{min-height:48px;border:2px solid var(--line);background:var(--card);border-radius:10px;padding:0 14px;cursor:pointer}
+button:hover,select:hover{border-color:var(--acc)}
+button.main{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:700;min-width:130px}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+input[type=range]{accent-color:var(--acc);height:32px;cursor:pointer}
+#spd{width:min(280px,40vw)}
+#prog{width:100%}
+.prow{display:flex;align-items:center;gap:12px;padding:10px 16px 0}
+.prow span{white-space:nowrap;color:var(--mut);font-variant-numeric:tabular-nums}
+output{min-width:4.8ch;font-weight:700;font-variant-numeric:tabular-nums}
+.panel{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:14px}
+.panel h2{font-size:1.15rem;margin:0}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 20px}
+label.f{display:grid;gap:4px;font-weight:700}
+label.f select,label.f input[type=range]{width:100%}
+input[type=color]{width:100%;height:48px;border:2px solid var(--line);border-radius:10px;padding:2px;background:var(--card);cursor:pointer}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+.presets button{min-height:44px;font-weight:700}
+textarea{width:100%;min-height:260px;resize:vertical;border:2px solid var(--line);border-radius:10px;background:var(--bg);padding:12px;line-height:1.5}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.row .info{color:var(--mut);margin-left:auto}
+.chk{display:flex;gap:10px;align-items:center;font-weight:700}
+.chk input{width:22px;height:22px;accent-color:var(--acc)}
+.hint{color:var(--mut);font-size:.95rem;margin:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Lector rápido</h1>
+<p class="sub">Pega un texto, elige la velocidad y pulsa Empezar.</p>
+</header>
+
+<section id="reader" aria-label="Lector">
+<div id="stage" aria-live="off"><div id="word"></div></div>
+<div class="prow"><input id="prog" type="range" min="0" max="0" value="0" aria-label="Posición en el texto"><span id="count">0 / 0</span></div>
+<div id="bar">
+<button id="play" class="main">Empezar</button>
+<button id="back" title="Retroceder 10 palabras">« 10</button>
+<button id="fwd" title="Avanzar 10 palabras">10 »</button>
+<div class="grp"><label for="spd">Velocidad</label><button id="slow" aria-label="Más lento">−</button><input id="spd" type="range" min="50" max="500" step="10" value="200"><button id="fast" aria-label="Más rápido">+</button><output id="spdOut">200 ppm</output></div>
+<div class="grp"><label for="grp">Palabras a la vez</label><select id="grp"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+<button id="fs" style="margin-left:auto">Pantalla completa</button>
+</div>
+</section>
+
+<section class="panel" aria-label="Aspecto">
+<h2>Aspecto del texto</h2>
+<div class="opts">
+<label class="f">Tipo de letra<select id="font"></select></label>
+<label class="f">Tamaño de letra: <output id="sizeOut"></output><input id="size" type="range" min="24" max="260" step="2"></label>
+<label class="f">Color del fondo<input id="bg" type="color"></label>
+<label class="f">Color de la letra<input id="fg" type="color"></label>
+</div>
+<div class="presets" id="presets" role="group" aria-label="Combinaciones de colores"></div>
+<label class="chk"><input id="pause" type="checkbox"> Pausa un poco más en comas y puntos</label>
+</section>
+
+<section class="panel" aria-label="Texto">
+<h2>Texto</h2>
+<textarea id="txt" placeholder="Escribe o pega aquí el texto. Puede ser tan largo como quieras."></textarea>
+<div class="row">
+<button id="sample">Texto de ejemplo</button>
+<button id="clear">Borrar texto</button>
+<button id="file">Abrir archivo .txt</button>
+<input id="fileIn" type="file" accept=".txt,text/plain" hidden>
+<span class="info" id="info"></span>
+</div>
+<p class="hint">Atajos: Espacio empieza o pausa · ↑ ↓ cambian la velocidad · ← → retroceden o avanzan 10 palabras · F pantalla completa.</p>
+</section>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const FONTS=[["Arial","Arial, Helvetica, sans-serif"],["Verdana","Verdana, Geneva, sans-serif"],["Trebuchet","'Trebuchet MS', Tahoma, sans-serif"],["Atkinson (muy legible)","'Atkinson Hyperlegible', Verdana, sans-serif"],["Lexend (lectura fácil)","Lexend, Verdana, sans-serif"],["Comic Sans","'Comic Sans MS', 'Comic Neue', cursive"],["Georgia","Georgia, serif"],["Times New Roman","'Times New Roman', Times, serif"],["Courier New","'Courier New', monospace"]];
+const PRESETS=[["Blanco y negro","#ffffff","#111111"],["Negro y blanco","#000000","#ffffff"],["Negro y amarillo","#000000","#ffe600"],["Azul y blanco","#0a2a66","#ffffff"],["Verde y blanco","#0d4d2f","#ffffff"],["Amarillo y negro","#fff3a8","#111111"]];
+const S={wpm:200,n:1,font:3,size:110,bg:"#ffffff",fg:"#111111",pause:true,text:""};
+let words=[],pos=0,cur=0,timer=null,playing=false;
+
+try{Object.assign(S,JSON.parse(localStorage.getItem("lectorRapido")||"{}"))}catch(e){}
+function save(){try{localStorage.setItem("lectorRapido",JSON.stringify(S))}catch(e){}}
+
+FONTS.forEach((f,i)=>{const o=document.createElement("option");o.value=i;o.textContent=f[0];$("font").appendChild(o)});
+PRESETS.forEach(p=>{const b=document.createElement("button");b.textContent=p[0];b.style.background=p[1];b.style.color=p[2];b.style.borderColor=p[2];
+b.onclick=()=>{S.bg=p[1];S.fg=p[2];applyLook();save()};$("presets").appendChild(b)});
+
+function applyLook(){
+const st=$("stage").style;st.background=S.bg;st.color=S.fg;
+const w=$("word").style;w.fontFamily=FONTS[S.font][1];w.fontSize=S.size+"px";
+$("font").value=S.font;$("size").value=S.size;$("sizeOut").textContent=S.size+" px";
+$("bg").value=S.bg;$("fg").value=S.fg;$("pause").checked=S.pause;
+}
+function applySpeed(){S.wpm=Math.max(50,Math.min(500,S.wpm));$("spd").value=S.wpm;$("spdOut").textContent=S.wpm+" ppm";$("grp").value=S.n}
+
+function parse(){
+const t=$("txt").value;S.text=t;
+words=t.trim().split(/\s+/).filter(Boolean);
+$("prog").max=Math.max(0,words.length-1);
+const min=words.length/S.wpm;
+$("info").textContent=words.length.toLocaleString("es-ES")+" palabras · unos "+(min<1?Math.round(min*60)+" s":Math.round(min*10)/10+" min")+" a "+S.wpm+" ppm";
+if(pos>=words.length){pos=0;cur=0}
+showAt(cur);save();
+}
+function render(i){
+const g=words.slice(i,i+S.n).join(" ");
+$("word").textContent=g||(words.length?"":"Escribe o pega un texto abajo");
+$("prog").value=i;
+$("count").textContent=(words.length?Math.min(i+S.n,words.length):0)+" / "+words.length;
+return g;
+}
+function showAt(i){cur=Math.max(0,Math.min(i,Math.max(0,words.length-1)));render(cur)}
+
+function run(){
+if(!playing)return;
+if(pos>=words.length){stop(true);return}
+cur=pos;
+const g=render(pos);
+let d=60000*Math.min(S.n,words.length-pos)/S.wpm;
+if(S.pause){if(/[.!?…:]["”»)]?$/.test(g))d*=1.6;else if(/[,;]["”»)]?$/.test(g))d*=1.25}
+pos+=S.n;
+timer=setTimeout(run,d);
+}
+function start(){
+if(!words.length){$("txt").focus();return}
+if(cur>=words.length-S.n&&pos>=words.length)pos=0;
+else pos=cur;
+playing=true;$("play").textContent="Pausa";run();
+}
+function stop(end){
+playing=false;clearTimeout(timer);
+$("play").textContent=end?"Repetir":"Empezar";
+if(end){pos=0;cur=Math.max(0,words.length-1)}
+}
+function toggle(){playing?stop(false):start()}
+function seek(i){
+clearTimeout(timer);cur=Math.max(0,Math.min(i,Math.max(0,words.length-1)));pos=cur;
+if(playing)run();else render(cur);
+}
+function setSpeed(v){S.wpm=v;applySpeed();parse();}
+
+$("play").onclick=toggle;
+$("back").onclick=()=>seek(cur-10);
+$("fwd").onclick=()=>seek(cur+10);
+$("prog").oninput=e=>seek(+e.target.value);
+$("spd").oninput=e=>setSpeed(+e.target.value);
+$("slow").onclick=()=>setSpeed(S.wpm-10);
+$("fast").onclick=()=>setSpeed(S.wpm+10);
+$("grp").onchange=e=>{S.n=+e.target.value;save();if(playing){clearTimeout(timer);pos=cur;run()}else render(cur)};
+$("font").onchange=e=>{S.font=+e.target.value;applyLook();save()};
+$("size").oninput=e=>{S.size=+e.target.value;applyLook();save()};
+$("bg").oninput=e=>{S.bg=e.target.value;applyLook();save()};
+$("fg").oninput=e=>{S.fg=e.target.value;applyLook();save()};
+$("pause").onchange=e=>{S.pause=e.target.checked;save()};
+$("txt").oninput=()=>{stop(false);cur=0;pos=0;parse()};
+$("clear").onclick=()=>{$("txt").value="";$("txt").oninput()};
+$("sample").onclick=()=>{
+$("txt").value="La lectura rápida consiste en leer más palabras en menos tiempo sin perder la comprensión. Para entrenarla conviene empezar despacio, con una velocidad cómoda, e ir subiendo poco a poco. Cuando el texto aparece de dos en dos o de tres en tres palabras, los ojos se acostumbran a abarcar más espacio de una sola mirada. Lo importante no es correr, sino entender lo que se lee y disfrutarlo. Prueba a cambiar la velocidad, el tamaño y los colores hasta encontrar la combinación que mejor se vea desde el fondo de la clase.";
+$("txt").oninput()};
+$("file").onclick=()=>$("fileIn").click();
+$("fileIn").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$("txt").value=String(r.result);$("txt").oninput()};r.readAsText(f);e.target.value=""};
+$("fs").onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():$("reader").requestFullscreen()}catch(e){}};
+
+document.addEventListener("keydown",e=>{
+if(/^(TEXTAREA|INPUT|SELECT)$/.test(e.target.tagName)&&e.target.type!=="range")return;
+if(e.target.tagName==="BUTTON"&&e.key===" ")return;
+const k=e.key;
+if(k===" "){e.preventDefault();toggle()}
+else if(k==="ArrowUp"){e.preventDefault();setSpeed(S.wpm+10)}
+else if(k==="ArrowDown"){e.preventDefault();setSpeed(S.wpm-10)}
+else if(k==="ArrowLeft"&&e.target.type!=="range"){seek(cur-10)}
+else if(k==="ArrowRight"&&e.target.type!=="range"){seek(cur+10)}
+else if(k==="f"||k==="F"){$("fs").click()}
+});
+
+$("txt").value=S.text||"";
+applyLook();applySpeed();parse();
+</script>
+</body>
+</html>
